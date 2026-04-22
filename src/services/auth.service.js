@@ -41,15 +41,15 @@ const login = async ({email, password}) => {
 
     const payload = {id: user.id, email: user.email};
 
-    const accesstoken = generateAccessToken(payload);
-    const refreshtoken = generateRefreshToken(payload);
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
 
-    user.refreshToken = refreshtoken;
+    user.refreshToken = refreshToken;
     await user.save();
 
     return{
-        accesstoken,
-        refreshtoken,
+        accessToken,
+        refreshToken,
         user: {id: user.id, name: user.name, email: user.email}
     };
 };
