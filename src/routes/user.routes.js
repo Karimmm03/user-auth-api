@@ -5,7 +5,7 @@ const User = require('../models/user.model');
 
 router.get('/me', protect, async (req, res) => {
     try{
-        const user = await User.findById(req.user.id).select('-password');
+        const user = await User.findById(req.user.id).select('name email createdAt');
         res.status(200).json({user});
     } catch(error){
         res.status(500).json({message: 'Server error'});
