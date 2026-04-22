@@ -1,6 +1,9 @@
 const User = require('../models/user.model');
 const bcrypt = require('bcryptjs');
-const {generateToken} = require('../utils/jwt.utils');
+const {
+    generateAccessToken,
+    generateRefreshToken,
+} = require('../utils/jwt.utils');
 
 const login = async ({email, password}) => {
     const user = await User.findOne({email});
@@ -11,10 +14,17 @@ const login = async ({email, password}) => {
         throw error;
     }
 
-    const token = generateToken({id: user.id, email: user.email})
+    const payload = {id: user.id, email: user.email};
+
+    const accesstoken = generateAccessToken(payload);
+    const refreshtoken = generateRefreshToken(payload);
+
+    user.refreshToken = refreshtoken;
+    await user.save();
 
     return{
-        token,
+        accesstoken,
+        refreshtoken,
         user: {id: user.id, name: user.name, email: user.email}
     };
 };

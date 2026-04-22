@@ -2,11 +2,10 @@ const loginService = require('../services/login.service');
 
 const login = async (req, res) => {
     try{
-        const {token, user} = await loginService(req.body);
+        const data = await loginService(req.body);
         res.status(200).json({
             message: 'Login successful',
-            token,
-            user
+            ...data
         });
     } catch(error){
         res.status(error.statusCode || 500).json({
