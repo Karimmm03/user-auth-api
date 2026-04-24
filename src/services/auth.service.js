@@ -23,10 +23,17 @@ const register = async ({name, email, password}) => {
         password: hashedPassword
     });
 
+    const payload = {id: user.id, email: user.email};
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
     return{
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email
+        accessToken,
+        refreshToken,
+        user: {id: user._id.toString(), name: user.name, email: user.email}
     };
 };
 
