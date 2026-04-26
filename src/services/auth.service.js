@@ -1,10 +1,12 @@
 const User = require('../models/user.model');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const {
     generateAccessToken,
     generateRefreshToken,
     verifyRefreshToken
 } = require('../utils/jwt.utils');
+const {sendResetPasswordEmail} = require('../utils/email.utils');
 
 const register = async ({name, email, password}) => {
     const existingUser = await User.findOne({email});
@@ -105,4 +107,50 @@ const logout = async (userId) => {
     await User.findByIdAndUpdate(userId, {refreshToken: null});
 };
 
-module.exports = {register, login, refresh, logout};
+const forgotPassword = async ({email}) => {
+    const user = await User.findOne({email});
+
+    if (!user) return;
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    user.passwordResetToken = hashedToken;
+    user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${rawToken}`;
+    await sendResetPasswordEmail({to: user.email, resetUrl});
+};
+
+const resetPassword = async ({token, newPassword}) => {
+    if (!token){
+        const error = new Error('Reset token is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: {$gt: Date.now()}
+    });
+
+    if (!user){
+        const error = new Error('Reset token is invalid or has expired');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    user.refreshToken = null;
+
+    await user.save();
+};
+
+module.exports = {register, login, refresh, logout, forgotPassword, resetPassword};
