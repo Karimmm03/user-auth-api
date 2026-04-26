@@ -79,13 +79,26 @@ const refresh = async ({refreshToken}) => {
 
     const user = await User.findById(decodedToken.id);
     if(!user || user.refreshToken !== refreshToken){
-        const error = new Error('Refresh token not recognized');
+        if (user){
+            user.refreshToken = null;
+            await user.save();
+        }
+        const error = new Error('Refresh token reuse detected — all sessions terminated');
         error.statusCode = 401;
         throw error;
     }
 
-    const accessToken = generateAccessToken({id: user.id, email: user.email});
-    return {accessToken};
+    const payload = {id: user.id, email: user.email};
+    const newAccessToken = generateAccessToken(payload);
+    const newRefreshToken = generateRefreshToken(payload);
+
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    return{
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken
+    };
 };
 
 const logout = async (userId) => {
