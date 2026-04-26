@@ -42,4 +42,16 @@ const resetPasswordSchema = z.object({
     .min(6, 'Password must be at least 6 characters')
 });
 
-module.exports = {registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema};
+const verifyEmailSchema = z.object({
+  token: z
+    .string({required_error: 'Verification token is required'})
+});
+
+const resendVerificationEmailSchema = z.object({
+  email: z
+    .string({required_error: 'Email is required'})
+    .trim()
+    .email('Invalid email format')
+});
+
+module.exports = {registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, resendVerificationEmailSchema};

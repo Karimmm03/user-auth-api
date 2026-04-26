@@ -23,6 +23,18 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: null
         },
+        isEmailVerified: {
+            type: Boolean,
+            default: false
+        },
+        emailVerificationToken: {
+            type: String,
+            default: null
+        },
+        emailVerificationExpires: {
+            type: Date,
+            default: null
+        },
         passwordResetToken: {
             type: String,
             default: null

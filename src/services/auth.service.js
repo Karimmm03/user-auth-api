@@ -6,7 +6,7 @@ const {
     generateRefreshToken,
     verifyRefreshToken
 } = require('../utils/jwt.utils');
-const {sendResetPasswordEmail} = require('../utils/email.utils');
+const {sendResetPasswordEmail, sendVerificationEmail} = require('../utils/email.utils');
 
 const register = async ({name, email, password}) => {
     const existingUser = await User.findOne({email});
@@ -19,23 +19,22 @@ const register = async ({name, email, password}) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
     const user = await User.create({
         name,
         email,
-        password: hashedPassword
+        password: hashedPassword,
+        emailVerificationToken: hashedToken,
+        emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
-    const payload = {id: user.id, email: user.email};
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
-
-    user.refreshToken = refreshToken;
-    await user.save();
+    const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${rawToken}`;
+    await sendVerificationEmail({to: user.email, verificationUrl});
 
     return{
-        accessToken,
-        refreshToken,
-        user: {id: user._id.toString(), name: user.name, email: user.email}
+        message: 'Registration successful. Please check your email to verify your account.'
     };
 };
 
@@ -45,6 +44,12 @@ const login = async ({email, password}) => {
     if(!user || !(await bcrypt.compare(password, user.password))){
         const error = new Error('Invalid credentials');
         error.statusCode = 401;
+        throw error;
+    }
+
+    if (!user.isEmailVerified){
+        const error = new Error('Please verify your email to log in');
+        error.statusCode = 403;
         throw error;
     }
 
@@ -153,4 +158,70 @@ const resetPassword = async ({token, newPassword}) => {
     await user.save();
 };
 
-module.exports = {register, login, refresh, logout, forgotPassword, resetPassword};
+const verifyEmail = async ({token}) => {
+    if (!token){
+        const error = new Error('Verification token is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+        emailVerificationToken: hashedToken,
+        emailVerificationExpires: {$gt: Date.now()}
+    });
+
+    if (!user){
+        const error = new Error('Verification token is invalid or has expired');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
+
+    const payload = {id: user.id, email: user.email};
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    return{
+        accessToken,
+        refreshToken,
+        user: {id: user.id, name: user.name, email: user.email}
+    };
+};
+
+const resendVerificationEmail = async ({email}) => {
+    const user = await User.findOne({email});
+
+    if (!user){
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (user.isEmailVerified){
+        const error = new Error('Email is already verified');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    user.emailVerificationToken = hashedToken;
+    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await user.save();
+
+    const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${rawToken}`;
+    await sendVerificationEmail({to: user.email, verificationUrl});
+
+    return {message: 'Verification email resent successfully'};
+};
+
+module.exports = {register, login, refresh, logout, forgotPassword, resetPassword, verifyEmail, resendVerificationEmail};
