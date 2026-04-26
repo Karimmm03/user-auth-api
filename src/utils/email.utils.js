@@ -20,7 +20,7 @@ const sendResetPasswordEmail = async ({to, resetUrl}) => {
             <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:6px;">
                 Reset Password
             </a>
-            <p>This link will expire in <strong>30 minutes</strong>.</p>
+            <p>This link will expire in <strong>15 minutes</strong>.</p>
             <p>If you did not request this, please ignore this email. Your password will remain unchanged.</p>
         `
     };
