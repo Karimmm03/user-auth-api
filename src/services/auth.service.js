@@ -1,12 +1,12 @@
 const User = require('../models/user.model');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 const {
     generateAccessToken,
     generateRefreshToken,
     verifyRefreshToken
 } = require('../utils/jwt.utils');
 const {sendResetPasswordEmail, sendVerificationEmail} = require('../utils/email.utils');
+const {generateCryptoToken, hashToken} = require('../utils/crypto.utils');
 
 const register = async ({name, email, password}) => {
     const existingUser = await User.findOne({email});
@@ -19,8 +19,7 @@ const register = async ({name, email, password}) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const {rawToken, hashedToken} = generateCryptoToken();
 
     const user = await User.create({
         name,
@@ -117,8 +116,7 @@ const forgotPassword = async ({email}) => {
 
     if (!user) return;
 
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const {rawToken, hashedToken} = generateCryptoToken();
 
     user.passwordResetToken = hashedToken;
     user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
@@ -135,7 +133,7 @@ const resetPassword = async ({token, newPassword}) => {
         throw error;
     }
 
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const hashedToken = hashToken(token);
 
     const user = await User.findOne({
         passwordResetToken: hashedToken,
@@ -165,7 +163,7 @@ const verifyEmail = async ({token}) => {
         throw error;
     }
 
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const hashedToken = hashToken(token);
 
     const user = await User.findOne({
         emailVerificationToken: hashedToken,
@@ -211,8 +209,7 @@ const resendVerificationEmail = async ({email}) => {
         throw error;
     }
 
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const {rawToken, hashedToken} = generateCryptoToken();
 
     user.emailVerificationToken = hashedToken;
     user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
