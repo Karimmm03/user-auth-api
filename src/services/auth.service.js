@@ -197,16 +197,8 @@ const verifyEmail = async ({token}) => {
 const resendVerificationEmail = async ({email}) => {
     const user = await User.findOne({email});
 
-    if (!user){
-        const error = new Error('User not found');
-        error.statusCode = 404;
-        throw error;
-    }
-
-    if (user.isEmailVerified){
-        const error = new Error('Email is already verified');
-        error.statusCode = 400;
-        throw error;
+    if (!user || user.isEmailVerified){
+        return {message: 'If your account exists and is unverified, a verification email has been sent.'};
     }
 
     const {rawToken, hashedToken} = generateCryptoToken();
@@ -218,7 +210,7 @@ const resendVerificationEmail = async ({email}) => {
     const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${rawToken}`;
     await sendVerificationEmail({to: user.email, verificationUrl});
 
-    return {message: 'Verification email resent successfully'};
+    return {message: 'If your account exists and is unverified, a verification email has been sent.'};
 };
 
 module.exports = {register, login, refresh, logout, forgotPassword, resetPassword, verifyEmail, resendVerificationEmail};
