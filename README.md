@@ -51,7 +51,14 @@ cp .env.example .env
 npm run dev
 ```
 
-## API Endpoints
+## API Documentation
+
+Interactive API documentation is available via **Swagger UI**. 
+
+After starting the server, navigate to:
+[http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+
+### Quick Reference
 
 ### Auth
 | Method | Endpoint | Description | Auth |
